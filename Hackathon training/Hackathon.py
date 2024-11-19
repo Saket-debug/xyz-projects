@@ -59,10 +59,73 @@ def remove_selected_appliance():
     else:
         messagebox.showerror("Selection Error", "Please select an appliance to remove.")
 
+# Function to calculate savings
+def calculate_savings():
+    grid_cost = grid_cost_var.get()
+    renewable_cost = renewable_cost_var.get()
+
+    if not grid_cost or not renewable_cost:
+        messagebox.showerror("Input Error", "Please enter the grid and renewable energy costs.")
+        return
+
+    try:
+        grid_cost = float(grid_cost)
+        renewable_cost = float(renewable_cost)
+    except ValueError:
+        messagebox.showerror("Input Error", "Costs must be valid numbers.")
+        return
+
+    total_consumption = 0
+    total_grid_cost = 0
+    total_renewable_cost = 0
+
+    # Calculate total energy consumption and cost
+    for appliance in appliances:
+        power_kw = appliance["power"] / 1000  # Convert watts to kilowatts
+        consumption_kwh = power_kw * appliance["hours"]  # Consumption in kWh
+        total_consumption += consumption_kwh
+        total_grid_cost += consumption_kwh * grid_cost
+        total_renewable_cost += consumption_kwh * renewable_cost
+
+    total_savings = total_grid_cost - total_renewable_cost
+
+    result_text = (
+        "Energy Savings Calculation:\n\n"
+        f"Total Appliances: {len(appliances)}\n"
+        f"Total Power Consumption: {total_consumption:.2f} kWh\n"
+        f"Total Cost with Grid Electricity: ${total_grid_cost:.2f}\n"
+        f"Total Cost with Renewable Energy: ${total_renewable_cost:.2f}\n"
+        f"Total Energy Savings: ${total_savings:.2f}\n\n"
+        "Breakdown by Appliance:\n"
+    )
+
+    for idx, appliance in enumerate(appliances, start=1):
+        result_text += (
+            f"{idx}. {appliance['name']} - {appliance['power']} W, "
+            f"{appliance['hours']} hours, "
+            f"{appliance['power'] * appliance['hours'] / 1000:.2f} kWh\n"
+        )
+
+    # Display results in the text box
+    result_text_widget.config(state="normal")
+    result_text_widget.delete("1.0", tk.END)
+    result_text_widget.insert(tk.END, result_text)
+    result_text_widget.config(state="disabled")
+
+    # Save results to a file
+    with open("energy_savings_results.txt", "a") as file:
+        file.write(result_text + "\n")
+
+# Function to clear the results
+def clear_results():
+    result_text_widget.config(state="normal")
+    result_text_widget.delete("1.0", tk.END)
+    result_text_widget.config(state="disabled")
+
 # Create main window
 root = tk.Tk()
 root.title("Energy Savings Calculator")
-root.geometry("600x600")
+root.geometry("600x700")
 root.resizable(False, False)
 
 # Title
@@ -81,7 +144,7 @@ appliance_entry = ttk.Combobox(appliance_frame, textvariable=appliance_var, valu
 appliance_entry.grid(row=0, column=1, padx=5, pady=5)
 
 # Power input field
-power_label = ttk.Label(appliance_frame, text="Power(In watts)(optional):")
+power_label = ttk.Label(appliance_frame, text="Power (W):")
 power_label.grid(row=1, column=0, padx=5, pady=5, sticky="w")
 power_var = tk.StringVar()
 power_entry = ttk.Entry(appliance_frame, textvariable=power_var)
@@ -126,59 +189,7 @@ renewable_cost_var = tk.StringVar()
 renewable_cost_entry = ttk.Entry(cost_frame, textvariable=renewable_cost_var)
 renewable_cost_entry.grid(row=1, column=1, padx=5, pady=5)
 
-# Function to calculate savings
-def calculate_savings():
-    grid_cost = grid_cost_var.get()
-    renewable_cost = renewable_cost_var.get()
-
-    if not grid_cost or not renewable_cost:
-        messagebox.showerror("Input Error", "Please enter the grid and renewable energy costs.")
-        return
-
-    try:
-        grid_cost = float(grid_cost)
-        renewable_cost = float(renewable_cost)
-    except ValueError:
-        messagebox.showerror("Input Error", "Costs must be valid numbers.")
-        return
-
-    total_consumption = 0
-    total_grid_cost = 0
-    total_renewable_cost = 0
-
-    # Calculate total energy consumption and cost
-    for appliance in appliances:
-        power_kw = appliance["power"] / 1000  # Convert watts to kilowatts
-        consumption_kwh = power_kw * appliance["hours"]  # Consumption in kWh
-        total_consumption += consumption_kwh
-        total_grid_cost += consumption_kwh * grid_cost
-        total_renewable_cost += consumption_kwh * renewable_cost
-
-    total_savings = total_grid_cost - total_renewable_cost
-
-    result_text = (
-        f"Total Power Consumption: {total_consumption:.2f} kWh\n"
-        f"Total Cost with Grid Electricity: ${total_grid_cost:.2f}\n"
-        f"Total Cost with Renewable Energy: ${total_renewable_cost:.2f}\n"
-        f"Total Energy Savings: ${total_savings:.2f}\n"
-    )
-
-    # Display results in the text box
-    result_text_widget.config(state="normal")
-    result_text_widget.delete("1.0", tk.END)
-    result_text_widget.insert(tk.END, result_text)
-    result_text_widget.config(state="disabled")
-
-    # Save results to a file
-    with open("energy_savings_results.txt", "a") as file:
-        file.write(result_text + "\n")
-
-# Function to clear the results
-def clear_results():
-    result_text_widget.config(state="normal")
-    result_text_widget.delete("1.0", tk.END)
-    result_text_widget.config(state="disabled")
-
+# Calculate and Clear Buttons
 calculate_button = ttk.Button(cost_frame, text="Calculate Savings", command=calculate_savings)
 calculate_button.grid(row=2, column=0, pady=10, padx=5)
 
@@ -189,8 +200,13 @@ clear_button.grid(row=2, column=1, pady=10, padx=5)
 result_frame = ttk.LabelFrame(root, text="Results")
 result_frame.pack(padx=10, pady=5, fill="both", expand=True)
 
-result_text_widget = tk.Text(result_frame, height=10, width=70, state="disabled")
-result_text_widget.pack(pady=5)
+result_text_widget = tk.Text(result_frame, height=10, width=70, state="disabled", wrap="word", font=("Arial", 10))
+result_text_widget.pack(pady=5, padx=5)
+
+# Scrollbar for the results
+scrollbar = ttk.Scrollbar(result_frame, command=result_text_widget.yview)
+result_text_widget.configure(yscrollcommand=scrollbar.set)
+scrollbar.pack(side="right", fill="y")
 
 # Run the application
 root.mainloop()
